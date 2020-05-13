@@ -27,8 +27,8 @@ def home():
             f'/api/v1.0/precipitation<br/>'
             f'/api/v1.0/stations<br/>'
             f'/api/v1.0/tobs<br/>'
-            f'/api/v1.0/tobs/start<br/>'
-            f'/api/v1.0/tobs/start/end')
+            f'/api/v1.0/tobs/start (YYYY-MM-DD)<br/>'
+            f'/api/v1.0/tobs/start/end (YYYY-MM-DD)')
 
 @app.route('/api/v1.0/precipitation')
 def precipitation():
@@ -82,25 +82,65 @@ def tobs():
         standout_station_list.append(standout)
     return jsonify(standout_station_list)
     
+##----Query with a given start date -----------------------------------------------------------------------------------------------------------
+@app.route('/api/v1.0/tobs/<start>')
+def tobs_start(start):
 
-# @app.route('/api/v1.0/tobs/<start>')
-# def tobs_start(start):
-#     start_date= start.replace(' ','').replace('/','').replace('-','').strftime('%Y-%M-%d')
-#     session=Session(engine)
-#     min_query=session.query(measurement.date,func.min(measurement.tobs)).\
-#                 filter(measurement.date>=start_date).all()
-#     session.close()
-#     min_query_list = list(np.ravel(min_query))
+    # start_date = dt.datetime.strptime(start,'%Y-%m-%d').strftime('%Y-%M-%d')
+    start_date = start
+    sel = [func.min(measurement.tobs),func.max(measurement.tobs),func.avg(measurement.tobs)]
+    session=Session(engine)
 
-#     return jsonify(f'The minimum temperature from {start_date}is:{min_query_list}')
+    query=session.query(*sel).\
+        filter(measurement.date>=start_date).all()
+    session.close()
+    query_list = list(np.ravel(query))
+    min_query_list = query_list[0]
+    max_query_list = query_list[1]
+    avg_query_list = query_list[2]
 
-# @app.route('/api/v1.0/tobs/<start>/<end>')
-# def tobs_start_end(start,end):
+    return (jsonify(f'The minimum temperature from {start_date} is:{min_query_list}',
+        f'The maximum temperature from {start_date} is:{max_query_list}',
+        f'The average temperature from {start_date} is:{avg_query_list}')
+    )
 
-#     return 'continue'
+##----Query with a given start date and end date -----------------------------------------------------------------------------------------------------------
+@app.route('/api/v1.0/tobs/<start>/<end>')
+def tobs_start_end(start,end):
+
+    # start_date = dt.datetime.strptime(start,'%Y-%m-%d').strftime('%Y-%M-%d')
+    # end_date = dt.datetime.strptime(end,'%Y-%m-%d').strftime('%Y-%M-%d')
+    start_date=start
+    end_date=end
+
+    sel = [func.min(measurement.tobs),func.max(measurement.tobs),func.avg(measurement.tobs)]
+    session=Session(engine)
+    
+    query=session.query(*sel).\
+                filter(measurement.date>=start_date).\
+                filter(measurement.date<=end_date).all()
+    query_list = list(np.ravel(query))
+    # max_query=session.query(measurement.date,func.max(measurement.tobs)).\
+    #             filter(measurement.date>=start_date).\
+    #             filter(measurement.date<=end_date).all()
+
+    # avg_query=session.query(measurement.date,func.avg(measurement.tobs)).\
+    #             filter(measurement.date>=start_date).\
+    #             filter(measurement.date<=end_date).all()
+
+    session.close()
+
+    min_query_list = list(np.ravel(query_list[0]))
+    max_query_list = list(np.ravel(query_list[1]))
+    avg_query_list = list(np.ravel(query_list[2]))
 
 
+    return (jsonify(f'The minimum temperature between {start_date} and {end_date} is:{min_query_list}',
+            f'The maximum temperature between {start_date} and {end_date} is:{max_query_list}',
+            f'The average temperature between {start_date} and {end_date} is:{avg_query_list}')
+    )
 
+##----Ends the Flask API app -----------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
 
